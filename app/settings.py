@@ -18,6 +18,11 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 ALPHA_VANTAGE_API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY")
+DB_NAME = os.environ.get("SUPABASE_DB_NAME")
+DB_USER = os.environ.get("SUPABASE_DB_USER")
+DB_PASSWORD = os.environ.get("SUPABASE_PASSWORD")
+DB_HOST = os.environ.get("SUPABASE_HOST")
+DB_PORT = os.environ.get("SUPABASE_PORT")
 
 # Application definition
 
@@ -71,9 +76,13 @@ WSGI_APPLICATION = "app.wsgi.application"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
     }
 }
 
