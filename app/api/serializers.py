@@ -10,3 +10,8 @@ class StockPriceSerializer(serializers.ModelSerializer):
         if StockPrice.objects.filter(symbol=self.initial_data['symbol'], timestamp=value).exists():
             raise serializers.ValidationError("A stock price entry for this symbol and timestamp already exists.")
         return value
+
+class BacktestSerializer(serializers.Serializer):
+    symbol = serializers.CharField(max_length=10)
+    initial_investment = serializers.DecimalField(max_digits=10, decimal_places=2)
+    
