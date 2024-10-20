@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from app.core.models import StockPrice
+from app.core.models import StockPrice, StockPrediction
 
 class StockPriceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,4 +14,9 @@ class StockPriceSerializer(serializers.ModelSerializer):
 class BacktestSerializer(serializers.Serializer):
     symbol = serializers.CharField(max_length=10)
     initial_investment = serializers.DecimalField(max_digits=10, decimal_places=2)
+    
+class PredictionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockPrediction
+        fields = ['symbol', 'prediction_date', 'predicted_price']
     

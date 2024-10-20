@@ -2,9 +2,9 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import StockPriceSerializer, BacktestSerializer
-from app.core.models import StockPrice
-from app.core.services import fetch_stock_data, backtest_strategy
+from .serializers import StockPriceSerializer, BacktestSerializer, PredictionSerializer
+from app.core.models import StockPrice, StockPrediction
+from app.core.services import fetch_stock_data, backtest_strategy, predict_stock_prices
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,6 @@ class StockPriceListView(APIView):
     def get(self, request, symbol=None):
         if symbol:
             if not symbol.isalpha() or len(symbol) > 10:
-                logger.warning(f"Invalid stock symbol: {symbol}")
                 return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
 
             stock_prices = StockPrice.objects.filter(symbol=symbol)
@@ -43,7 +42,6 @@ class StockDataFetchView(APIView):
 
     def post(self, request, symbol):
         if not symbol.isalpha() or len(symbol) > 10:
-            logger.warning(f"Invalid stock symbol for fetching data: {symbol}")
             return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -76,7 +74,6 @@ class BacktestView(APIView):
     """
 
     def post(self, request):
-        print(request.data)
         serializer = BacktestSerializer(data=request.data)
         if serializer.is_valid():
             symbol = serializer.validated_data['symbol']
@@ -85,7 +82,6 @@ class BacktestView(APIView):
 
             stock_data = StockPrice.objects.filter(symbol=symbol).order_by('timestamp')
             if not stock_data.exists():
-                logger.warning(f"No stock data found for symbol: {symbol}")
                 return Response({'error': 'Stock data not found'}, status=status.HTTP_404_NOT_FOUND)
 
             df = pd.DataFrame(list(stock_data.values('timestamp', 'close')))
@@ -98,3 +94,56 @@ class BacktestView(APIView):
 
         logger.error(f"Invalid data provided for backtesting: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class StockPricePredictionView(APIView):
+    """
+    Predict future stock prices.
+
+    POST /api/v1/prediction/<symbol>/ # Stock symbol to predict prices for
+
+    Returns:
+    {
+        "predictions": [
+            {"date": "YYYY-MM-DD", "predicted_price": float},
+            ...
+        ]
+    }
+    """
+
+    def post(self, request, symbol):
+        if not symbol or not symbol.isalpha() or len(symbol) > 10:
+            return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        stock_data = StockPrice.objects.filter(symbol=symbol).order_by('timestamp')
+        if not stock_data.exists():
+            return Response({"error": "No historical data found for this symbol."}, status=status.HTTP_404_NOT_FOUND)
+
+        df = pd.DataFrame(list(stock_data.values('timestamp', 'close')))
+        df.set_index('timestamp', inplace=True)
+
+        try:
+            predictions = predict_stock_prices(df)
+            logger.info(f"Predictions generated for symbol: {symbol}")
+            
+            for _, row in predictions.iterrows():
+                prediction_date = row['date'].date()
+                predicted_price = row['predicted_price']
+
+                StockPrediction.objects.update_or_create(
+                    symbol=symbol,
+                    prediction_date=prediction_date,
+                    defaults={
+                        'predicted_price': predicted_price
+                    }
+                )
+
+            logger.info(f"Predictions for {symbol} stored/updated in the database")
+            latest_predictions = StockPrediction.objects.filter(symbol=symbol).order_by('prediction_date')
+            prediction_serializer = PredictionSerializer(latest_predictions, many=True)
+            return Response({"predictions": prediction_serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error occurred during prediction for {symbol}: {str(e)}")
+            return Response({"error": "Prediction failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

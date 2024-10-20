@@ -1,11 +1,16 @@
 import httpx
 import pandas as pd
+from .utils import load_model
+import numpy as np
 from datetime import datetime, timedelta
 from django.conf import settings
 from app.api.serializers import StockPriceSerializer
 import logging
 
 logger = logging.getLogger(__name__)
+
+MODEL_PATH = 'app/core/ml/model.pkl'
+model = load_model(MODEL_PATH)
 
 def fetch_stock_data(symbol):
     API_KEY = settings.ALPHA_VANTAGE_API_KEY
@@ -87,3 +92,16 @@ def backtest_strategy(prices, initial_investment):
         'number_of_trades': trades,
         'final_cash': cash
     }
+    
+def predict_stock_prices(stock_data, days=30):
+    last_prediction = stock_data['close'].iloc[-1]
+    predictions = []
+    for _ in range(days):
+        next_prediction = model.predict(np.array([[last_prediction]]))[0]
+        predictions.append(next_prediction)
+        last_prediction = next_prediction
+
+    return pd.DataFrame({
+        'predicted_price': predictions,
+        'date': pd.date_range(start=pd.Timestamp.now(), periods=days)
+    })
