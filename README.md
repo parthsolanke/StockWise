@@ -21,3 +21,13 @@ curl -X POST http://127.0.0.1:8000/api/v1/backtest/ \
 curl -X POST http://127.0.0.1:8000/api/v1/prediction/AAPL/ \
 -H "Content-Type: application/json"
 
+# 6. Generate Report
+curl -X POST http://localhost:8000/api/v1/report/ \
+-H "Content-Type: application/json" \
+-d '{ 
+    "symbol": "AAPL",
+    "format": "pdf",
+    "initial_investment": 10000.00
+}' --output AAPL_report.pdf
+
+
