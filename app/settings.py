@@ -18,6 +18,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 ALPHA_VANTAGE_API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY")
+API_BASE_URL = os.environ.get('API_BASE_URL')
 DB_NAME = os.environ.get("SUPABASE_DB_NAME")
 DB_USER = os.environ.get("SUPABASE_DB_USER")
 DB_PASSWORD = os.environ.get("SUPABASE_PASSWORD")
@@ -56,7 +57,7 @@ ROOT_URLCONF = "app.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        'DIRS': [os.path.join(BASE_DIR, 'app/templates')],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

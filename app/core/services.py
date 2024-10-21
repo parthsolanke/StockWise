@@ -65,7 +65,7 @@ def backtest_strategy(prices, initial_investment):
 
     prices = calculate_moving_averages(prices)
 
-    for index, row in prices.iterrows():
+    for _, row in prices.iterrows():
         close_price = row['close']
         moving_average_50 = row['50_MA']
         moving_average_200 = row['200_MA']

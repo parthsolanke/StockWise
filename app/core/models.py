@@ -28,3 +28,12 @@ class StockPrediction(models.Model):
 
     def __str__(self):
         return f"Prediction for {self.symbol} on {self.prediction_date}: {self.predicted_price}"
+
+class StockReport(models.Model):
+    symbol = models.CharField(max_length=10, unique=True)
+    report_data = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Report for {self.symbol} - {self.created_at}"
