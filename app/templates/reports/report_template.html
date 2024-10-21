@@ -68,8 +68,10 @@
 
     <div class="section backtest-results">
         <h2>Backtest Results</h2>
-        <p>Total Return: <span class="highlight">{{ backtest.total_return }}%</span></p>
-        <p>Max Drawdown: <span class="highlight">{{ backtest.max_drawdown }}%</span></p>
+        <p>Total Return: <span class="highlight">{{ backtest.total_return_percentage }}%</span></p>
+        <p>Max Drawdown: <span class="highlight">{{ backtest.max_drawdown_percentage }}%</span></p>
+        <p>Total Trades: <span class="highlight">{{ backtest.number_of_trades }}%</span></p>
+        <p>Final Amount: <span class="highlight">{{ backtest.final_cash }}%</span></p>
     </div>
 
     <div class="footer">
