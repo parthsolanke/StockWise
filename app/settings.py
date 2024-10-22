@@ -1,6 +1,7 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+from urllib.parse import urlparse
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -19,11 +20,6 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 ALPHA_VANTAGE_API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY")
 API_BASE_URL = os.environ.get('API_BASE_URL')
-DB_NAME = os.environ.get("SUPABASE_DB_NAME")
-DB_USER = os.environ.get("SUPABASE_DB_USER")
-DB_PASSWORD = os.environ.get("SUPABASE_PASSWORD")
-DB_HOST = os.environ.get("SUPABASE_HOST")
-DB_PORT = os.environ.get("SUPABASE_PORT")
 
 # Application definition
 
@@ -79,17 +75,16 @@ WSGI_APPLICATION = "app.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': DB_NAME,
-        'USER': DB_USER,
-        'PASSWORD': DB_PASSWORD,
-        'HOST': DB_HOST,
-        'PORT': DB_PORT,
-    },
-    'OPTIONS': {
-        'connect_timeout': 10,
-    },
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
+        'OPTIONS': {
+            'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
+        },
+    }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

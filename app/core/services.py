@@ -87,10 +87,10 @@ def backtest_strategy(prices, initial_investment):
                 max_drawdown = max(max_drawdown, drawdown)
 
     return {
-        'total_return_percentage': total_return,
-        'max_drawdown_percentage': max_drawdown,
+        'total_return_percentage': round(total_return, 2),
+        'max_drawdown_percentage': round(max_drawdown, 2),
         'number_of_trades': trades,
-        'final_cash': cash
+        'final_cash': round(cash, 2)
     }
     
 def predict_stock_prices(stock_data, days=30):
