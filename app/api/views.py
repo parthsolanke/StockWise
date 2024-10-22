@@ -8,6 +8,7 @@ from rest_framework import status
 from .serializers import StockPriceSerializer, BacktestSerializer, PredictionSerializer
 from app.core.models import StockPrice, StockPrediction, StockReport
 from app.core.services import fetch_stock_data, backtest_strategy, predict_stock_prices
+from app.core.utils import fetch_stock_data_from_api, fetch_stock_prediction_from_api, fetch_backtest_data_from_api
 from app.reports.report_generator import generate_report
 import pandas as pd
 
@@ -180,6 +181,7 @@ class GenerateStockReportView(APIView):
         try:
             stock_data = fetch_stock_data_from_api(symbol)
             stock_prediction = fetch_stock_prediction_from_api(symbol)
+            backtest_data = fetch_backtest_data_from_api(symbol, initial_investment)
 
             if not stock_data or not stock_prediction:
                 logger.warning(f"Missing data for symbol: {symbol}")
@@ -189,7 +191,7 @@ class GenerateStockReportView(APIView):
                 symbol=symbol,
                 historical_data=stock_data,
                 predictions=stock_prediction,
-                backtest_data=get_backtest_data_from_api(symbol, initial_investment)
+                backtest_data=backtest_data
             )
 
             report, created = StockReport.objects.update_or_create(
@@ -209,48 +211,4 @@ class GenerateStockReportView(APIView):
             logger.error(f"Error generating report for {symbol}: {str(e)}")
             return Response({"error": "Failed to generate report."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def get_api_url(route):
-    return f"{settings.API_BASE_URL}{route}"
-
-def fetch_stock_data_from_api(symbol):
-    stock_data = StockPrice.objects.filter(symbol=symbol).order_by('timestamp')
-    if not stock_data.exists():
-        logger.info(f"Fetching stock data via API for symbol: {symbol}")
-        api_url = get_api_url(f"/stock-prices/fetch/{symbol}/")
-        response = requests.post(api_url)
-        if response.status_code == 201:
-            stock_data = StockPrice.objects.filter(symbol=symbol).order_by('timestamp')
-            stock_data = StockPriceSerializer(stock_data, many=True)
-            return stock_data.data
-        else:
-            logger.error(f"Failed to fetch stock data for {symbol}: {response.text}")
-            raise Exception(f"Failed to fetch stock data: {response.text}")
-    stock_data = StockPriceSerializer(stock_data, many=True)
-    return stock_data.data
-
-def fetch_stock_prediction_from_api(symbol):
-    stock_prediction = StockPrediction.objects.filter(symbol=symbol).order_by('prediction_date')
-    if not stock_prediction.exists():
-        logger.info(f"Fetching stock predictions via API for symbol: {symbol}")
-        api_url = get_api_url(f"/prediction/{symbol}/")
-        response = requests.post(api_url)
-        if response.status_code == 200:
-            stock_prediction = StockPrediction.objects.filter(symbol=symbol).order_by('prediction_date')
-            stock_prediction = PredictionSerializer(stock_prediction, many=True)
-            return stock_prediction.data
-        else:
-            logger.error(f"Failed to fetch predictions for {symbol}: {response.text}")
-            raise Exception(f"Failed to fetch predictions: {response.text}")
-    stock_prediction = PredictionSerializer(stock_prediction, many=True)
-    return stock_prediction.data
-
-def get_backtest_data_from_api(symbol, initial_investment):
-    api_url = get_api_url("/backtest/")
-    data = {'symbol': symbol, 'initial_investment': initial_investment}
-    response = requests.post(api_url, json=data)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logger.error(f"Failed to backtest for {symbol}: {response.text}")
-        raise Exception(f"Failed to run backtest: {response.text}")
     
