@@ -75,6 +75,7 @@ DB_USER=value
 DB_PASSWORD=value
 DB_HOST=value
 DB_PORT=value
+REDIS_URL=value
 ```
 
 > **Note:** Replace `value` with your actual values.
