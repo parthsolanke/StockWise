@@ -1,6 +1,4 @@
 import logging
-import requests
-from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import FileResponse
@@ -10,6 +8,7 @@ from app.core.models import StockPrice, StockPrediction, StockReport
 from app.core.services import fetch_stock_data, backtest_strategy, predict_stock_prices
 from app.core.utils import fetch_stock_data_from_api, fetch_stock_prediction_from_api, fetch_backtest_data_from_api
 from app.reports.report_generator import generate_report
+from django.core.cache import cache
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -24,8 +23,15 @@ class StockPriceListView(APIView):
 
     def get(self, request, symbol=None):
         if symbol:
+            
             if not symbol.isalpha() or len(symbol) > 10:
                 return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            cache_key = f"stock_prices_{symbol}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                logger.info(f"Retrieved cached data for: {symbol}")
+                return Response(cached_data, status=status.HTTP_200_OK)
 
             stock_prices = StockPrice.objects.filter(symbol=symbol)
             if not stock_prices.exists():
@@ -35,6 +41,7 @@ class StockPriceListView(APIView):
             stock_prices = StockPrice.objects.all()
 
         serializer = StockPriceSerializer(stock_prices, many=True)
+        cache.set(cache_key, serializer.data, timeout=60 * 60)
         logger.info(f"Retrieved {len(serializer.data)} stock prices (symbol: {symbol})")
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -48,6 +55,11 @@ class StockDataFetchView(APIView):
     def post(self, request, symbol):
         if not symbol.isalpha() or len(symbol) > 10:
             return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        existing_data = StockPrice.objects.filter(symbol=symbol).exists()
+        if existing_data:
+            logger.info(f"Stock data for symbol {symbol} already exists in the database.")
+            return Response({"message": f"Stock data for {symbol} already exists."}, status=status.HTTP_200_OK)
 
         try:
             fetch_stock_data(symbol)
@@ -119,6 +131,12 @@ class StockPricePredictionView(APIView):
         if not symbol or not symbol.isalpha() or len(symbol) > 10:
             return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
         
+        cache_key = f"prediction_{symbol}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Retrieved cached prediction for: {symbol}")
+            return Response(cached_data, status=status.HTTP_200_OK)
+        
         stock_data = StockPrice.objects.filter(symbol=symbol).order_by('timestamp')
         if not stock_data.exists():
             return Response({"error": "No historical data found for this symbol."}, status=status.HTTP_404_NOT_FOUND)
@@ -145,6 +163,7 @@ class StockPricePredictionView(APIView):
             logger.info(f"Predictions for {symbol} stored/updated in the database")
             latest_predictions = StockPrediction.objects.filter(symbol=symbol).order_by('prediction_date')
             prediction_serializer = PredictionSerializer(latest_predictions, many=True)
+            cache.set(cache_key, prediction_serializer.data, timeout=60 * 60)
             return Response({"predictions": prediction_serializer.data}, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -177,6 +196,16 @@ class GenerateStockReportView(APIView):
         if not symbol.isalpha() or len(symbol) > 10:
             logger.warning(f"Invalid stock symbol: {symbol}")
             return Response({"error": "Invalid stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        cache_key = f'report_{symbol}_{initial_investment}_{report_format}'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data:
+            if report_format == 'pdf':
+                logger.info(f"PDF report fetched from cache for symbol: {symbol}")
+                return FileResponse(cached_data, as_attachment=True, filename=f"{symbol}_report.pdf")
+            logger.info(f"json report fetched from cache for symbol: {symbol}")
+            return Response(cached_data, status=status.HTTP_200_OK)
 
         try:
             stock_data = fetch_stock_data_from_api(symbol)
@@ -200,6 +229,8 @@ class GenerateStockReportView(APIView):
             )
             logger.info(f"Report for {symbol} {'created' if created else 'updated'} in the database")
 
+            cache.set(cache_key, report_data if report_format == 'json' else pdf_output, timeout=60 * 60)
+            
             if report_format == 'pdf':
                 logger.info(f"PDF report generated for symbol: {symbol}")
                 return FileResponse(pdf_output, as_attachment=True, filename=f"{symbol}_report.pdf")

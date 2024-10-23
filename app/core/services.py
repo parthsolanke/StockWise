@@ -4,6 +4,7 @@ from .utils import load_model
 import numpy as np
 from datetime import datetime, timedelta
 from django.conf import settings
+from .models import StockPrice
 from app.api.serializers import StockPriceSerializer
 import logging
 
@@ -27,10 +28,14 @@ def fetch_stock_data(symbol):
             
             two_years_ago = datetime.now() - timedelta(days=2 * 365)
             for date, stats in time_series.items():
-                if datetime.strptime(date, '%Y-%m-%d') >= two_years_ago:
+                stock_date = datetime.strptime(date, '%Y-%m-%d')
+                if stock_date >= two_years_ago:
+                    if StockPrice.objects.filter(symbol=symbol, timestamp=stock_date).exists():
+                        logger.info(f"Stock data for {symbol} on {date} already exists in the database. Skipping.")
+                        continue
                     stock_price_data = {
                         'symbol': symbol,
-                        'timestamp': date,
+                        'timestamp': stock_date,
                         'open': stats['1. open'],
                         'close': stats['4. close'],
                         'high': stats['2. high'],
