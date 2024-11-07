@@ -1,4 +1,4 @@
-# StockWise API - README
+# StockWise API
 
 Welcome to **StockWise API**, a Django-based application for stock price predictions, backtesting strategies, and generating financial reports.
 
